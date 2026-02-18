@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from PIL import Image
+from fastapi.staticfiles import StaticFiles
 from src.imagecaptioning.inference import generate_caption
 from src.imagecaptioning.model import HybridModelAttention
 import torch
@@ -11,6 +12,7 @@ app = FastAPI(
     summary="Generate a caption based on the image you upload.",
     version="0.1.0",
 )
+app.mount("/app", StaticFiles(directory="static", html=True), name="static")
 
 
 def load_vocab(vocab_json_path: str):

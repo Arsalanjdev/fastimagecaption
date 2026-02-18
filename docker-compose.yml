@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  ptorch-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ptorch-fastapi
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/.pytest_cache
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    command: uvicorn src.fastapi.app:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - ptorch-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  ptorch-network:
+    driver: bridge
+
+volumes:
+  ptorch-data:
+    driver: local
