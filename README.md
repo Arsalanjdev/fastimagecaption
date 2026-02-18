@@ -4,8 +4,6 @@ A PyTorch-based image captioning application that generates descriptive captions
 
 ## Screenshot
 
-Below is a screenshot of the app generating captions for an image of a dog running through grass:
-
 ![Screenshot of app generating a caption for a dog running through grass](screen.png)
 
 ## Features
@@ -250,7 +248,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## License
 
-[Add your license here]
+MIT
 
 ## Author
 
