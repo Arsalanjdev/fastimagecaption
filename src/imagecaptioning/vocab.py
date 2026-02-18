@@ -26,8 +26,8 @@ class Vocabulary:
         Initialize the vocabulary, optionally building it from provided
         caption tokens.
         """
-        self.word2idx = {"<PAD>":0, "<UNK>":1, "<SOS>":2, "<EOS>":3}
-        self.idx2word = {i:w for w,i in self.word2idx.items()}
+        self.word2idx = {"<PAD>": 0, "<UNK>": 1, "<SOS>": 2, "<EOS>": 3}
+        self.idx2word = {i: w for w, i in self.word2idx.items()}
         self.idx = 4
         self.threshold = threshold
         self.freq = Counter(" ".join(tokens).split()) if tokens else Counter()
@@ -64,7 +64,7 @@ class Vocabulary:
             int: Size of the vocabulary (including special tokens).
         """
         return len(self.word2idx)
-    
+
     def dump_to_json(self, filepath: str) -> None:
         """
         Serialize the vocabulary to a JSON file.
@@ -89,6 +89,5 @@ class Vocabulary:
             "end_token": "<EOS>",
             "unknown_token": "<UNK>",
         }
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(vocab_data, f, indent=2)
-    

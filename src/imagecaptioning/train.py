@@ -20,6 +20,7 @@ EPOCHS = 50
 # DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DEVICE = torch.device("cpu")
 
+
 class ImageCaptionDataset(Dataset):
     """
     PyTorch Dataset for loading image–caption pairs for image captioning
@@ -41,7 +42,13 @@ class ImageCaptionDataset(Dataset):
             transformations applied to each image.
     """
 
-    def __init__(self, captions_filepath: str, image_directory: str, vocabulary: Vocabulary, transforms: transforms.Compose | None = None):
+    def __init__(
+        self,
+        captions_filepath: str,
+        image_directory: str,
+        vocabulary: Vocabulary,
+        transforms: transforms.Compose | None = None,
+    ):
         """
         Initialize the dataset by loading image–caption pairs and storing
         preprocessing configuration.
@@ -81,9 +88,11 @@ class ImageCaptionDataset(Dataset):
             img = self.transforms(img)
 
         tokens = tokenize(caption)
-        caption_indices = [self.vocab.word2idx["<SOS>"]] + \
-                          [self.vocab.word2idx.get(t, self.vocab.word2idx["<UNK>"]) for t in tokens] + \
-                          [self.vocab.word2idx["<EOS>"]]
+        caption_indices = (
+            [self.vocab.word2idx["<SOS>"]]
+            + [self.vocab.word2idx.get(t, self.vocab.word2idx["<UNK>"]) for t in tokens]
+            + [self.vocab.word2idx["<EOS>"]]
+        )
         caption_indices = torch.tensor(caption_indices, dtype=torch.long)
         return img, caption_indices
 
@@ -135,21 +144,17 @@ class CaptionCollate:
         """
         images = torch.stack([item[0] for item in batch], dim=0)
         captions = pad_sequence(
-            [item[1] for item in batch],
-            batch_first=True,
-            padding_value=self.pad_idx
+            [item[1] for item in batch], batch_first=True, padding_value=self.pad_idx
         )
         return images, captions
+
 
 all_captions = [caption[1] for caption in split_imagefile_captions(CAPTION_PATH)]
 vocab = Vocabulary(all_captions)
 vocab.dump_to_json("vocab.json")
 pad_idx = vocab.word2idx["<PAD>"]
 
-transform = transforms.Compose([
-    transforms.Resize((224,224)),
-    transforms.ToTensor()
-])
+transform = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
 
 dataset = ImageCaptionDataset(CAPTION_PATH, IMAGE_DIR, vocab, transforms=transform)
 
@@ -158,16 +163,34 @@ total_len = len(dataset)
 test_len = int(TEST_RATIO * total_len)
 val_len = int(VAL_RATIO * total_len)
 train_len = total_len - val_len - test_len
-train_dataset, val_dataset, test_dataset = random_split(dataset, [train_len, val_len, test_len])
+train_dataset, val_dataset, test_dataset = random_split(
+    dataset, [train_len, val_len, test_len]
+)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=CaptionCollate(pad_idx))
-val_loader   = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=CaptionCollate(pad_idx))
-test_loader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=CaptionCollate(pad_idx))
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    collate_fn=CaptionCollate(pad_idx),
+)
+val_loader = DataLoader(
+    val_dataset,
+    batch_size=BATCH_SIZE,
+    shuffle=False,
+    collate_fn=CaptionCollate(pad_idx),
+)
+test_loader = DataLoader(
+    test_dataset,
+    batch_size=BATCH_SIZE,
+    shuffle=False,
+    collate_fn=CaptionCollate(pad_idx),
+)
 
 
 model = HybridModelAttention(len(vocab)).to(DEVICE)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
+
 
 def train_one_epoch(model, loader):
     model.train()
@@ -182,10 +205,7 @@ def train_one_epoch(model, loader):
         outputs = model(images, inputs)
         vocab_size = outputs.size(-1)
 
-        loss = criterion(
-            outputs.reshape(-1, vocab_size),
-            targets.reshape(-1)
-        )
+        loss = criterion(outputs.reshape(-1, vocab_size), targets.reshape(-1))
 
         loss.backward()
         optimizer.step()
@@ -203,13 +223,10 @@ def evaluate(model, loader):
             images, captions = images.to(DEVICE), captions.to(DEVICE)
             inputs, targets = captions[:, :-1], captions[:, 1:]
 
-            outputs = model(images, inputs)   # ← same change here
+            outputs = model(images, inputs)  # ← same change here
             vocab_size = outputs.size(-1)
 
-            loss = criterion(
-                outputs.reshape(-1, vocab_size),
-                targets.reshape(-1)
-            )
+            loss = criterion(outputs.reshape(-1, vocab_size), targets.reshape(-1))
 
             total_loss += loss.item()
 
@@ -219,7 +236,9 @@ def evaluate(model, loader):
 for epoch in range(EPOCHS):
     train_loss = train_one_epoch(model, train_loader)
     val_loss = evaluate(model, val_loader)
-    print(f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
+    print(
+        f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}"
+    )
 
 test_loss = evaluate(model, test_loader)
 print(f"Test Loss: {test_loss:.4f}")

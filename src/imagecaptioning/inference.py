@@ -2,17 +2,13 @@ import argparse
 import json
 import os
 from typing import Dict, Tuple
-
+from PIL import Image
 import torch
 from PIL import Image
 from torchvision import transforms
 
 from src.imagecaptioning.model import HybridModelAttention
 
-
-# ---------------------------------------------------------------------------
-# Vocabulary
-# ---------------------------------------------------------------------------
 
 def load_vocab(vocab_json_path: str) -> Dict[str, Dict]:
     """
@@ -46,11 +42,7 @@ def load_vocab(vocab_json_path: str) -> Dict[str, Dict]:
     return {"word2idx": word2idx, "idx2word": idx2word}
 
 
-# ---------------------------------------------------------------------------
-# Image preprocessing
-# ---------------------------------------------------------------------------
-
-def preprocess_image(image_path: str, device: torch.device) -> torch.Tensor:
+def preprocess_image(image: Image.Image | str, device: torch.device) -> torch.Tensor:
     """
     Load and preprocess an image for caption generation.
 
@@ -64,8 +56,8 @@ def preprocess_image(image_path: str, device: torch.device) -> torch.Tensor:
 
     Parameters
     ----------
-    image_path : str
-        Path to the input image.
+    image : str | Image.Image
+        Path to the input image or the image itself.
     device : torch.device
         Device where the tensor will be moved.
 
@@ -74,34 +66,34 @@ def preprocess_image(image_path: str, device: torch.device) -> torch.Tensor:
     torch.Tensor
         Preprocessed image tensor of shape (1, 3, 224, 224).
     """
-    img = Image.open(image_path).convert("RGB")
+    if isinstance(image, str):
+        img = Image.open(image).convert("RGB")
+    elif isinstance(image, Image.Image):
+        img = image.convert("RGB")
 
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor()
-    ])
+    transform = transforms.Compose(
+        [transforms.Resize((224, 224)), transforms.ToTensor()]
+    )
 
     return transform(img).unsqueeze(0).to(device)
 
 
-# ---------------------------------------------------------------------------
-# Caption generation
-# ---------------------------------------------------------------------------
-
 def generate_caption(
-    image_path: str,
+    *args,
+    image: Image.Image | str,
+    image_path: str | None = None,
     model: HybridModelAttention,
     vocab: Dict,
     device: torch.device,
-    max_len: int = 20
+    max_len: int = 20,
 ) -> str:
     """
     Generate an image caption using an attention-based hybrid model.
 
     Parameters
     ----------
-    image_path : str
-        Path to the input image.
+    image : str | Image.Image
+        Path to the input image or the image itself.
     model : HybridModelAttention
         Captioning model.
     vocab : Dict
@@ -123,7 +115,7 @@ def generate_caption(
     eos = word2idx.get("<EOS>", 3)
 
     model.eval()
-    img_tensor = preprocess_image(image_path, device)
+    img_tensor = preprocess_image(image, device)
 
     with torch.no_grad():
         encoder_out = model.encoder(img_tensor)
@@ -152,21 +144,25 @@ def generate_caption(
     return " ".join(tokens)
 
 
-# ---------------------------------------------------------------------------
-# CLI entrypoint
-# ---------------------------------------------------------------------------
-
 def main() -> None:
     """
     Command-line entry point for generating captions from an image.
     """
     parser = argparse.ArgumentParser(description="Generate caption for an input image")
     parser.add_argument("image", help="Path to the input image")
-    parser.add_argument("--model", default="model_weights.pt", help="Path to .pt model file")
+    parser.add_argument(
+        "--model", default="model_weights.pt", help="Path to .pt model file"
+    )
     parser.add_argument("--vocab", default="vocab.json", help="Path to vocab JSON file")
-    parser.add_argument("--checkpoint", default=None, help="Optional model checkpoint (.pth)")
-    parser.add_argument("--device", default="cpu", help="Device for inference (cpu or cuda)")
-    parser.add_argument("--max-len", type=int, default=20, help="Maximum caption length")
+    parser.add_argument(
+        "--checkpoint", default=None, help="Optional model checkpoint (.pth)"
+    )
+    parser.add_argument(
+        "--device", default="cpu", help="Device for inference (cpu or cuda)"
+    )
+    parser.add_argument(
+        "--max-len", type=int, default=20, help="Maximum caption length"
+    )
 
     args = parser.parse_args()
 
@@ -190,9 +186,13 @@ def main() -> None:
             state = torch.load(args.checkpoint, map_location=device)
             model.load_state_dict(state)
         else:
-            print(f"Warning: checkpoint not found at {args.checkpoint}. Using random weights.")
+            print(
+                f"Warning: checkpoint not found at {args.checkpoint}. Using random weights."
+            )
 
-    caption = generate_caption(args.image, model, vocab, device, max_len=args.max_len)
+    caption = generate_caption(
+        image=args.image, model=model, vocab=vocab, device=device, max_len=args.max_len
+    )
     print(caption)
 
 

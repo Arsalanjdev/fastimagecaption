@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
+
 class CNNEncoderAttention(nn.Module):
     """
     Convolutional encoder that extracts spatial feature maps suitable
@@ -52,11 +53,11 @@ class CNNEncoderAttention(nn.Module):
                 (batch_size, num_regions, feat_dim), where
                 num_regions = H * W.
         """
-        feat = self.backbone(x)               # (B, 2048, 7, 7)
+        feat = self.backbone(x)  # (B, 2048, 7, 7)
         B, C, H, W = feat.shape
         feat = feat.view(B, C, H * W).permute(0, 2, 1)  # (B, 49, 2048)
         return feat
-    
+
 
 class BahdanauAttention(nn.Module):
     """
@@ -108,17 +109,18 @@ class BahdanauAttention(nn.Module):
         # encoder_out: (B, num_pixels, feat_dim)
         # hidden: (B, hidden_size)
 
-        enc = self.encoder_attn(encoder_out)          # (B, num_pixels, attn_dim)
+        enc = self.encoder_attn(encoder_out)  # (B, num_pixels, attn_dim)
         dec = self.decoder_attn(hidden).unsqueeze(1)  # (B, 1, attn_dim)
 
         scores = torch.tanh(enc + dec)
-        scores = self.full_attn(scores).squeeze(-1)   # (B, num_pixels)
+        scores = self.full_attn(scores).squeeze(-1)  # (B, num_pixels)
 
         alpha = torch.softmax(scores, dim=1)
         context = (encoder_out * alpha.unsqueeze(-1)).sum(dim=1)  # (B, feat_dim)
 
         return context, alpha
-    
+
+
 class AttentionDecoder(nn.Module):
     """
     Attention-based LSTM decoder for image caption generation.
@@ -210,7 +212,8 @@ class AttentionDecoder(nn.Module):
 
         outputs = torch.cat(outputs, dim=1)
         return outputs
-    
+
+
 class HybridModelAttention(nn.Module):
     """
     Hybrid image-captioning model using a CNN encoder with spatial
