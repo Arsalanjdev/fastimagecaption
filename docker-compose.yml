@@ -10,8 +10,8 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
-      - /app/__pycache__
-      - /app/.pytest_cache
+      # - /app/__pycache__
+      # - /app/.pytest_cache
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
